@@ -1,0 +1,28 @@
+# Policy server config for SO-101 real robot.
+#
+# Usage (GPU machine — start first, stop manually with Ctrl-C):
+#   python -m lerobot.async_inference.policy_server \
+#       --config_path src/lerobot/async_inference/config/so101/async_server.yaml
+#
+# CLI args override YAML values.  Model identity is transmitted from the client
+# on connection (via RemotePolicyConfig gRPC) — no pretrained_name_or_path here.
+
+# ── Network ────────────────────────────────────────────────────────────────────
+# Bind to all interfaces so the robot machine can connect via the GPU machine's IP.
+# Client sets: --server_address=<GPU_MACHINE_IP>:8080
+host: "0.0.0.0"
+port: 8080
+
+# ── Timing ────────────────────────────────────────────────────────────────────
+fps: 20              # SO-101 control rate (Hz)
+
+# inference_latency=0.0 → use real measured inference time (no artificial delay).
+# Set >0 only for simulation sweep experiments.
+inference_latency: 0.0
+
+obs_queue_timeout: 1.0    # seconds to wait for an obs before timeout
+obs_similarity_atol: 1.0  # min L2 joint change (deg) to trigger re-inference;
+                           # set 0.0 to always re-infer on every received obs
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+log_level: "INFO"

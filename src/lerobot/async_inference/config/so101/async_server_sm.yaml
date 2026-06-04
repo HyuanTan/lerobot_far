@@ -1,0 +1,21 @@
+# Policy server config for SO-101 real robot — SM variant.
+#
+# Usage (GPU machine):
+#   python -m lerobot.async_inference.policy_server \
+#       --config_path src/lerobot/async_inference/config/so101/async_server_sm.yaml \
+#       --timing_output_dir=<dir>
+#
+# Machine-specific args (timing_output_dir) are passed via CLI in the eval script.
+
+# ── Network ────────────────────────────────────────────────────────────────────
+host: "0.0.0.0"     # bind all interfaces for cross-machine access
+port: 8080
+
+# ── Timing ────────────────────────────────────────────────────────────────────
+fps: 20
+inference_latency: 0.0   # real measured latency; no artificial delay
+obs_queue_timeout: 1.0
+obs_similarity_atol: 1.0
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+log_level: "INFO"

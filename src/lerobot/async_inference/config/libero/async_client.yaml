@@ -1,0 +1,63 @@
+# Multi-candidate client config for SO-101 real robot.
+#
+# Usage:
+#   python -m lerobot.async_inference.run_so101_multicand_client \
+#       --config_path src/lerobot/async_inference/config/so101/multicand_client.yaml \
+#       --task="pick the red block and place it in the bin"
+#
+# CLI args override YAML values, e.g.:
+#   --fps=10 --client_smooth_alpha=0.3 --server_address=192.168.1.100:8080
+#
+# All tuned values are annotated with the reason for the change from the
+# original command-line defaults.
+
+# ── Server connection ──────────────────────────────────────────────────────────
+server_address: "127.0.0.1:8080"
+
+policy_device: cuda
+client_device: cuda
+
+# ── Policy ────────────────────────────────────────────────────────────────────
+policy_type: "smolvla"
+pretrained_name_or_path: ""          # REQUIRED: set via CLI or edit here
+
+chunk_size_threshold: 0.5
+transmit_images_as_uint8: true
+
+# ── Control timing     --rtc_execution_horizon=0 \
+
+fps: 30
+actions_per_chunk: 50
+rtc_execution_horizon: 0            # RTC re-planning with 10-action horizon
+# RTC requires latest_only; validated in RobotClientConfig.__post_init__.
+# NOTE: if deploy code raises DecodingError on this field, configs.py is out of
+# sync — pass --aggregate_fn_name=latest_only as a CLI arg as a workaround.
+aggregate_fn_name: "latest_only"
+
+interpolation_multiplier: 1
+
+
+# ── Payload optimisation ───────────────────────────────────────────────────────
+# obs_image_use_model_resize: true     # use model-specific pad/resize (matches training)
+# obs_image_resize_hw: [224, 224]      # pi05 target resolution; reduces gRPC payload
+# obs_image_jpeg_quality: 85           # JPEG compress before sending (~10-20x smaller)
+
+
+# ── Output root ────────────────────────────────────────────────────────────────
+# Uncomment and set save_root_path to prefix all output paths automatically.
+# Paths below (trajectory_dir, results_dir, data_collect_dir, etc.) become
+# sub-directories of save_root_path when it is set.
+# save_root_path: "./outputs/eval_client/so101/run1"
+
+# ── Data collection & trajectory recording ─────────────────────────────────────
+# record_trajectory: true
+# trajectory_dir: "trajectories"
+# # data_collect_dir: "mc_data"        # uncomment to enable client_steps.jsonl logging
+# results_dir: "results"
+
+
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+log_level: "WARNING" # "INFO"
+# log_candidate_stats: true
+queue_size_monitor_interval: 5

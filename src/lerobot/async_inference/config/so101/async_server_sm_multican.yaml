@@ -1,0 +1,42 @@
+# Multi-candidate server config for SO-101 real robot — SM multicand variant.
+#
+# Usage (GPU machine):
+#   python -m lerobot.async_inference.multi_candidate_server \
+#       --config_path src/lerobot/async_inference/config/so101/async_server_sm_multican.yaml \
+#       --timing_output_dir=<dir>
+#
+# Machine-specific args (timing_output_dir) are passed via CLI in the eval script.
+
+# ── Network ────────────────────────────────────────────────────────────────────
+host: "127.0.0.1"
+port: 8080
+
+# ── Timing ────────────────────────────────────────────────────────────────────
+fps: 20
+inference_latency: 0.0
+obs_queue_timeout: 1.0
+obs_similarity_atol: 1.0
+
+# ── Candidate generation ───────────────────────────────────────────────────────
+# n_candidates=2, delay_delta=0 → 2 candidates with noise diversity only (no delay split).
+# SO-101 at 20 Hz has tight latency budget; more candidates increase GPU pressure.
+n_candidates: 4
+delay_delta: 0          # 0 = noise diversity only (no delay split)
+top_k: 2
+
+# ── Server-side scoring ────────────────────────────────────────────────────────
+# w_consistency=0.0: disabled for pick-place (multi-modal policy → avg = indecisive)
+w_jerk: 1.0
+w_vel_peak: 0.5
+w_consistency: 0.0
+
+# ── Output root ────────────────────────────────────────────────────────────────
+# Uncomment and set save_root_path to prefix all output paths automatically.
+# save_root_path: "./outputs/eval/so101/run1"
+
+# ── Data collection ────────────────────────────────────────────────────────────
+record_all_candidates: true
+# data_collect_dir: "mc_data"   # uncomment to enable JSONL logging
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+log_level: "INFO"

@@ -1,0 +1,213 @@
+# MultiCandSO101Config for SO-101 real robot — SM multicand variant (RTC mode, pi05).
+#
+# Usage (robot machine):
+#   python -m lerobot.async_inference.run_so101_multicand_client \
+#       --config_path src/lerobot/async_inference/config/so101/async_client_sm_multican.yaml \
+#       --task="..." \
+#       --pretrained_name_or_path=<model> \
+#       --server_address=<GPU_MACHINE_IP>:8080 \
+#       --robot.type=so100_follower \
+#       --robot.port=/dev/ttyACM_so101follower \
+#       --robot.id=cse_so101follower \
+#       --robot.cameras="{...}"
+#
+# Machine-specific args (server_address, robot.*, task, pretrained_name_or_path,
+# timing_output_dir, trajectory_output_dir, queue_size_monitor_path) are passed
+# via CLI in the eval script rather than hardcoded here.
+#
+# All tuned values are annotated with the reason for the change from the
+# original command-line defaults.
+
+# ── Server connection ──────────────────────────────────────────────────────────
+server_address: "127.0.0.1:8080"
+
+policy_device: cuda
+client_device: cuda
+
+# ── Policy ────────────────────────────────────────────────────────────────────
+policy_type: "pi05"
+pretrained_name_or_path: ""          # REQUIRED: set via CLI or edit here
+
+# ── Robot (draccus nested config) ─────────────────────────────────────────────
+# robot:
+#   type: so100_follower
+#   port: /dev/ttyUSB0
+#   cameras:
+#     front: {type: opencv, index_or_path: 0}
+# NOTE: robot config is typically passed on CLI since port/device IDs vary per machine.
+
+# ── Control timing ─────────────────────────────────────────────────────────────
+fps: 20
+actions_per_chunk: 50
+rtc_execution_horizon: 10            # RTC re-planning with 10-action horizon
+# RTC requires latest_only; validated in RobotClientConfig.__post_init__.
+# NOTE: if deploy code raises DecodingError on this field, configs.py is out of
+# sync — pass --aggregate_fn_name=latest_only as a CLI arg as a workaround.
+aggregate_fn_name: "latest_only"
+
+interpolation_multiplier: 1
+
+# ── infer_delay calibration (Tier 2: split-component + asymmetric quantiles) ─────
+# The RTC inference-delay hint is computed per obs from two latency components of
+# different statistical nature, then converted to steps:
+#   infer_delay = ceil( ( pQi(server_infer) + pQo(overhead) ) / dt )
+#     server_infer = stable server pipeline time             → HIGH quantile (cheap to cover)
+#     overhead     = complete_s − server_infer               → MODERATE quantile
+#                    (gRPC + queue_wait + deser; bimodal/heavy-tailed — rare spikes are
+#                     caught by force_must_go, so covering the tail is unnecessary)
+# Asymmetric hysteresis suppresses ±1-step jitter (upward adopts now; downward needs ≥2).
+# Bootstrap: until both component trackers have ≥3 samples, the fallback formula
+#   min(ceil(p50/dt) + ceil(spike_buffer_s/dt), ceil(p90/dt))  is used.
+# NOTE: multi-candidate also uses inference_delay_low = ceil((infer.p50 + overhead.p50)/dt)
+#   as the optimistic delay for candidate diversity.
+#
+# infer_latency_quantile    : quantile of the stable server_infer component (default 0.90)
+#     ↑ higher = safer coverage of inference jitter (cheap; single-peaked).
+# overhead_latency_quantile : quantile of the heavy-tailed overhead component (default 0.75)
+#     ↓ lower = fresher actions (occasional starvation caught by force_must_go);
+#     ↑ higher = more conservative.  KEEP below infer_latency_quantile — covering the
+#     overhead tail re-introduces the infer_delay over-estimation failure mode.
+# spike_buffer_s            : bootstrap-fallback safety margin, seconds      (default 0.15)
+#
+# infer_latency_quantile: 0.90
+# overhead_latency_quantile: 0.75
+# spike_buffer_s: 0.15
+
+# ── Payload optimisation ──────────────────────────────────────────────────────
+# Three independent parameters control client→server image payload.
+# Execution order: resize (client) → JPEG compress (client) → send → decode+resize (server)
+#
+# obs_image_resize_hw   — client-side resize target per-camera {cam: [H,W]} or uniform [H,W].
+#   None (default)      → no client resize; server receives full-resolution images.
+#   set (e.g. [224,224])→ images resized before sending; mode set by obs_image_use_model_resize.
+#
+# obs_image_use_model_resize — selects resize algorithm when obs_image_resize_hw is set.
+#   true                → model-specific pad/resize (matches training preprocessing).
+#   false               → letterbox resize (aspect-ratio preserving, no model-specific pad).
+#
+# skip_server_resize    — derived automatically from obs_image_use_model_resize; NOT set here.
+#   This flag controls raw_observation_to_observation() in the server pipeline, which is the
+#   FIRST image processing step — NOT the final model input.  Full server pipeline:
+#     raw_obs → [skip_server_resize controls here] → preprocessor (Normalizer+Tokenizer) → model
+#   The Tokenizer includes the model's own resize_with_pad() as the true final resize.
+#
+#   true  (obs_image_use_model_resize=true)
+#     → server skips bilinear resize; client must have applied the exact model-specific pad/resize.
+#       Model's internal resize_with_pad() becomes a no-op → exactly matches training transforms.
+#   false (obs_image_use_model_resize=false)
+#     → server applies bilinear resize to policy_image_features.shape (e.g. 224×224 / 512×512).
+#       Model's internal resize_with_pad() then runs on the already-resized image (≈ no-op at
+#       correct size, but bilinear is NOT the same transform as training-time pad/resize).
+#
+# obs_image_jpeg_quality — JPEG compression applied AFTER resize, before gRPC send.
+#   None (default)      → no compression; raw uint8 pixel arrays sent.
+#   85 (recommended)    → ~10-20× smaller payload; applied to already-resized images.
+#
+# Interaction matrix:
+#   resize_hw=None  + use_model_resize=false + jpeg=None → full-res raw    (max quality)
+#   resize_hw=set   + use_model_resize=true              → model pad/crop, server skips resize
+#   resize_hw=set   + use_model_resize=false + jpeg=None → letterbox raw   (server still resizes)
+#   resize_hw=set   + use_model_resize=false + jpeg=85   → letterbox JPEG  (server still resizes)
+#   resize_hw=None  + jpeg=85                            → full-res JPEG   (compress only)
+#
+
+# obs_image_use_model_resize: true     # model-specific pad/resize; server skips resize
+# obs_image_resize_hw: [224, 224]      # pi05 target resolution; reduces gRPC payload
+# obs_image_jpeg_quality: 85           # JPEG compress before sending (~10-20x smaller)
+# skip_server_resize: true
+
+# ── Client-side re-ranking ─────────────────────────────────────────────────────
+# TUNED: alpha 0.4→0.5 — continuity is the primary discriminating signal when
+# server confidence is near coin-flip (mean softmax winner prob = 0.502).
+client_smooth_alpha: 0.5
+
+server_score_normalize: "softmax"    # scale-invariant normalisation (recommended)
+
+# ── O1: spread-based uncertainty slow mode ─────────────────────────────────────
+# CRITICAL FIX: threshold 0.15→4.0
+# Root cause: server spread is computed in normalised policy space (mean≈0.172),
+# but client spread is computed in physical degree space (mean≈4.39, 25× larger).
+# The original 0.15 threshold triggers 100% of NORMAL steps in slow mode.
+spread_uncertainty_threshold: 4.0
+
+# TUNED: scale 1.5→1.2 — gentler slow-mode to avoid over-weighting continuity
+# when the spread signal is noisy at the physical-space scale.
+spread_slow_alpha_scale: 1.2
+spread_slow_mode_window: 5
+
+# ── Joint-limit gate ───────────────────────────────────────────────────────────
+# CRITICAL FIX: limits -10/310 → -200/150 (signed calibrated degree space)
+# Root cause: original limits assumed Feetech [0°,270°] convention; SO-101
+# joints operate in signed calibrated degrees: actual range [-165°, +104°].
+# With action_limit_min=-10.0, ALL candidates fail → 100% fallback to server
+# selection, completely disabling multi-candidate client-side selection.
+action_limit_min: -200.0
+action_limit_max: 150.0
+
+# ── SO-101 gripper thresholds ──────────────────────────────────────────────────
+# Keep these in sync with gripper_pos_open_threshold / gripper_pos_empty_threshold
+# in SmartRobotClientConfig to avoid Layer-4/5 mismatch warnings.
+so101_gripper_open_deg: 20.0
+# TUNED: 8.0→10.0 — gives slightly more margin to distinguish "fully closed
+# with no object" from "gripping a thin object" (observed gripper range: 0–30°).
+so101_gripper_empty_deg: 10.0
+
+# ── Gripper state machine ──────────────────────────────────────────────────────
+enable_gripper_sm: true
+gripper_load_grasp_threshold: 80.0
+gripper_pos_empty_threshold: 10.0   # kept in sync with so101_gripper_empty_deg
+gripper_pos_open_threshold: 20.0    # kept in sync with so101_gripper_open_deg
+recovery_smooth_steps: 155
+
+
+# ── Empty-grasp rewind ─────────────────────────────────────────────────────────
+empty_grasp_rewind_enabled: true
+gripper_grasp_confirm_steps: 0
+max_empty_grasp_retries: 3
+empty_grasp_rewind_buffer_steps: 150
+empty_grasp_rewind_steps: 120
+empty_grasp_rewind_min_displacement_deg: 50.0
+empty_grasp_rewind_warmup_steps: 1 #2
+empty_grasp_rewind_settle_time: 1.0
+
+empty_grasp_lift_retry_enabled: false
+empty_grasp_lift_delta_xyz_m: [0.0, 0.0, 0.12]
+empty_grasp_lift_warmup_steps: 1 #2
+empty_grasp_lift_settle_time: 0.5
+
+enable_recapture_home_positions: false
+task_done_home_check_mode: joint
+task_done_home_tolerance: 8.0
+task_done_home_ee_tolerance_m: 0.01
+task_done_home_ee_tolerance_xyz_m: [0.01,0.01,0.01]
+
+task_done_home_check_gripper: true
+task_done_home_gripper_tolerance_deg: 1.0
+task_done_home_confirm_steps: 5
+bg_obs_sender_send_image: true # false
+recovery_warmup_steps: 1 # 2
+recovery_home_settle_time: 0.5 # 1.0
+queue_size_monitor_interval: 5
+
+# ── Anti-repeat penalty after retry ───────────────────────────────────────────
+retry_anti_repeat_steps: 30
+retry_anti_min_dist: 15.0
+retry_anti_penalty: 0.35
+
+# ── Output root ────────────────────────────────────────────────────────────────
+# Uncomment and set save_root_path to prefix all output paths automatically.
+# Paths below (trajectory_dir, results_dir, data_collect_dir, etc.) become
+# sub-directories of save_root_path when it is set.
+# save_root_path: "./outputs/eval_client/so101/run1"
+
+# ── Data collection & trajectory recording ─────────────────────────────────────
+record_trajectory: true
+trajectory_dir: "mc_trajectories"
+# data_collect_dir: "mc_data"        # uncomment to enable client_steps.jsonl logging
+results_dir: "mc_results"
+
+
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+log_level: "INFO"
+log_candidate_stats: true

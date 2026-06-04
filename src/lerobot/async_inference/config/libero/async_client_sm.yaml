@@ -1,0 +1,140 @@
+# src/lerobot/async_inference/config/libero/async_smolvla_client_sm.yaml
+#
+# Config for SimSmartClientConfig — used by:
+#   python -m lerobot.async_inference.sim_test.run_libero_smart_test
+#
+# Extends async_smolvla_client.yaml with gripper state machine (SM) parameters.
+# SM uses MuJoCo set_state() to rewind on empty-grasp / slip detection.
+#
+# CRITICAL: obs_type MUST be "pixels_agent_pos" for SM to access gripper qpos.
+#   If obs_type="pixels", SM auto-disables with a warning.
+#
+# Usage:
+#   # Sync (chunk_size_threshold=0, SM only):
+#   python -m lerobot.async_inference.sim_test.run_libero_smart_test \
+#       --config_path src/lerobot/async_inference/config/libero/async_smolvla_client_sm.yaml \
+#       --env_task=libero_object \
+#       --pretrained_name_or_path=HollyTan/libero_smolvla_500MSmolVLM2_multitask \
+#       --server_address=localhost:8085 \
+#       --chunk_size_threshold=0.0 \
+#       --results_dir=./outputs/eval_thesis/libero/libero_object/sync_sm/smolvla/latency_s0/K50/results
+#
+#   # Async + SM (chunk_size_threshold=T/K ratio):
+#   python -m lerobot.async_inference.sim_test.run_libero_smart_test \
+#       --config_path src/lerobot/async_inference/config/libero/async_smolvla_client_sm.yaml \
+#       --env_task=libero_object \
+#       --pretrained_name_or_path=HollyTan/libero_smolvla_500MSmolVLM2_multitask \
+#       --server_address=localhost:8085 \
+#       --actions_per_chunk=50 \
+#       --chunk_size_threshold=0.4 \
+#       --rtc_execution_horizon=0 \
+#       --results_dir=./outputs/...
+#
+# CLI args always override YAML values.
+
+# ── Server connection ──────────────────────────────────────────────────────────
+server_address: "localhost:8085"
+
+# ── Policy ────────────────────────────────────────────────────────────────────
+policy_type: "smolvla"
+pretrained_name_or_path: ""          # REQUIRED: set via CLI or edit here
+
+policy_device: "cuda"
+client_device: "cuda"
+
+# ── LIBERO environment ────────────────────────────────────────────────────────
+# CRITICAL: pixels_agent_pos provides gripper qpos — required for SM.
+obs_type: "pixels_agent_pos"
+camera_name: "agentview_image,robot0_eye_in_hand_image"
+env_task: "libero_object"            # override via CLI: --env_task=libero_spatial
+episodes_per_task: 10
+# max_episode_steps: null            # null = use suite default (~500 steps)
+# task_ids: null                     # null = all tasks in suite
+
+# ── Control timing ─────────────────────────────────────────────────────────────
+fps: 30
+actions_per_chunk: 50
+# chunk_size_threshold: ratio in [0,1]; 0.0 = synchronous (blocking), >0 = async.
+# Override on CLI: --chunk_size_threshold=0.4  (e.g. T=20, K=50 → 20/50=0.4)
+chunk_size_threshold: 0.0
+rtc_execution_horizon: 0             # 0 = RTC disabled; set to H for async_rtc mode
+aggregate_fn_name: "latest_only"
+interpolation_multiplier: 1
+
+# ── gRPC payload ───────────────────────────────────────────────────────────────
+transmit_images_as_uint8: true       # ~4x smaller payload (server auto-converts)
+
+# ── Gripper state machine ─────────────────────────────────────────────────────
+# Franka parallel gripper in Robosuite/LIBERO:
+#   action[-1] > 0  → close gripper (grasping)
+#   action[-1] < 0  → open  gripper (releasing)
+#   get_libero_dummy_action()[-1] = -1  → hold, open
+#
+# Gripper finger qpos (abs_sum = abs(q0) + abs(q1)):
+#   0.000  = fully closed (fingers touching)
+#   ~0.080 = fully open
+enable_gripper_sm: true
+gripper_close_action_threshold: 0.0  # action > 0 triggers CLOSING phase
+
+# Thresholds on abs_sum of finger qpos (scale: 0.000 = closed, ~0.080 = fully open).
+# Required ordering (validated in SimSmartClientConfig.__post_init__): empty <= grasp < open.
+#   empty == grasp → no "still-closing" dead-zone (aggressive empty detection).
+#   empty <  grasp → adds a dead-zone [empty, grasp) treated as "still closing" (e.g. 0.008).
+# NOTE: empty MUST NOT exceed grasp — the GRASP_SUCCESS check runs first in CLOSING, so a
+#   larger empty value is silently clamped to grasp and has no effect (was 0.04 → =grasp here).
+gripper_pos_sum_empty_threshold: 0.020   # qpos_sum below this AND no contact → empty grasp
+gripper_pos_sum_grasp_threshold: 0.020   # qpos_sum at/above this OR contact → grasp confirmed
+gripper_pos_sum_open_threshold:  0.050   # qpos_sum above this → gripper open (skip CLOSING eval)
+
+# Consecutive steps below empty_threshold needed to declare empty_grasp / slip:
+gripper_confirm_steps: 3
+
+# Ignore first N policy steps (prevents false detection during episode init):
+sm_activation_delay: 10
+
+# Velocity guard: while qpos_sum is still actively decreasing (fingers in transit),
+# hold the confirm count instead of incrementing — avoids false empty_grasp when
+# the gripper crosses empty_threshold before MuJoCo contact force is registered.
+closing_qpos_velocity_epsilon: 0.001  # 1 mm/step; set 0.0 to disable
+
+# Max retries before SM goes dormant for the rest of the episode:
+max_empty_grasp_retries: 3
+
+# ── Home-reset recovery ────────────────────────────────────────────────────────
+# On the 2nd+ failure: restore the saved env.reset() state (full scene + robot)
+# instead of rewinding again. Gives the policy a clean slate.
+enable_home_reset: true
+home_reset_warmup_steps: 1          # context-fill steps after home reset
+
+# ── Rewind mode ────────────────────────────────────────────────────────────────
+# set_state (recommended for sim): MuJoCo sim.set_state() teleports robot AND
+#   objects back to the saved snapshot instantly — exact, zero-step restore.
+# action_replay: reverse the executed action history via env.step() — smooth
+#   visual context for the policy but cannot restore object positions.
+rewind_mode: "set_state"
+
+rewind_buffer_steps: 60             # snapshots to keep (2s at 30 Hz)
+rewind_warmup_steps: 2             # hold-action steps after rewind to refill context
+rewind_step_back: 0                 # 0 = oldest snapshot (maximum rewind distance)
+
+# action_replay mode only:
+rewind_gripper_open_val: -1.0       # gripper open during backward replay
+rewind_min_net_displacement: 0.0    # 0.0 = use all history up to buffer_steps
+
+# ── Results / output ───────────────────────────────────────────────────────────
+results_dir: "./libero_smart_results"
+save_results: true
+timing_output_dir: null              # set via CLI: --timing_output_dir=.../client_timing
+
+# ── Video recording ────────────────────────────────────────────────────────────
+save_video: false
+video_camera: "image"
+video_dir: "videos"
+video_fps: 30
+
+# ── Queue monitor ──────────────────────────────────────────────────────────────
+queue_size_monitor_interval: 5       # seconds between PNG snapshots; 0.0 = disabled
+queue_size_monitor_path: "queue_size.png"
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+log_level: "WARNING"

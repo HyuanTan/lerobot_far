@@ -1,0 +1,28 @@
+# Multi-candidate server config for SO-101 real robot.
+#
+# Usage:
+#   python -m lerobot.async_inference.multi_candidate_server \
+#       --config_path src/lerobot/async_inference/config/so101/multicand_server.yaml \
+#       --pretrained_name_or_path <model_path>
+#
+# CLI args override YAML values, e.g.:
+#   --port=8081 --log_level=INFO
+
+# ── Network ────────────────────────────────────────────────────────────────────
+host: "127.0.0.1"
+port: 8080
+
+# ── Timing ────────────────────────────────────────────────────────────────────
+fps: 30
+inference_latency: 0.0
+obs_queue_timeout: 1.0
+obs_similarity_atol: 1.0
+
+
+
+# ── Output root ────────────────────────────────────────────────────────────────
+# Uncomment and set save_root_path to prefix all output paths automatically.
+# save_root_path: "./outputs/eval/so101/run1"
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+log_level: "WARNING" # "INFO"

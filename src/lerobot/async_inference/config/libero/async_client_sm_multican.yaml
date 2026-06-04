@@ -1,0 +1,161 @@
+# src/lerobot/async_inference/config/libero/async_smolvla_client_sm_multican.yaml
+#
+# Config for MultiCandLiberoConfig — used by:
+#   python -m lerobot.async_inference.sim_test.run_libero_multicand_test
+#
+# Inheritance chain:
+#   MultiCandLiberoConfig → SimSmartClientConfig → LiberoSimConfig
+#
+# Adds multi-candidate client-side re-ranking (Phase 2) and data-collection
+# (Phase 3) on top of the gripper SM + rewind from SimSmartClientConfig.
+#
+# CRITICAL: obs_type MUST be "pixels_agent_pos" for SM to access gripper qpos.
+#
+# Usage:
+#   # Start multi-candidate server first (separate terminal):
+#   python -m lerobot.async_inference.multi_candidate_server \
+#       --policy_type=smolvla \
+#       --pretrained_name_or_path=HollyTan/libero_smolvla_500MSmolVLM2_multitask \
+#       --host=localhost --port=8097 \
+#       --n_candidates=4 --top_k=2
+#
+#   # Async + SM + multi-candidate:
+#   python -m lerobot.async_inference.sim_test.run_libero_multicand_test \
+#       --config_path src/lerobot/async_inference/config/libero/async_smolvla_client_sm_multican.yaml \
+#       --env_task=libero_object \
+#       --pretrained_name_or_path=HollyTan/libero_smolvla_500MSmolVLM2_multitask \
+#       --server_address=localhost:8097 \
+#       --chunk_size_threshold=0.4 \
+#       --results_dir=./outputs/.../results
+#
+# CLI args always override YAML values.
+
+# ── Server connection ──────────────────────────────────────────────────────────
+server_address: "localhost:8097"
+
+# ── Policy ────────────────────────────────────────────────────────────────────
+policy_type: "smolvla"
+pretrained_name_or_path: ""          # REQUIRED: set via CLI or edit here
+
+policy_device: "cuda"
+client_device: "cpu"
+
+# ── LIBERO environment ────────────────────────────────────────────────────────
+# CRITICAL: pixels_agent_pos provides gripper qpos — required for SM.
+obs_type: "pixels_agent_pos"
+camera_name: "agentview_image,robot0_eye_in_hand_image"
+env_task: "libero_object"            # override via CLI: --env_task=libero_spatial
+episodes_per_task: 10
+# max_episode_steps: null            # null = use suite default (~500 steps)
+# task_ids: null                     # null = all tasks in suite
+
+# ── Control timing ─────────────────────────────────────────────────────────────
+fps: 30
+actions_per_chunk: 50
+# chunk_size_threshold: ratio in [0,1]; 0.0 = synchronous, >0 = async.
+# Override on CLI: --chunk_size_threshold=0.4  (e.g. T=20, K=50 → 20/50=0.4)
+chunk_size_threshold: 0.0
+rtc_execution_horizon: 0             # 0 = RTC disabled
+aggregate_fn_name: "latest_only"
+interpolation_multiplier: 1
+
+# ── gRPC payload ───────────────────────────────────────────────────────────────
+transmit_images_as_uint8: true       # ~4x smaller payload (server auto-converts)
+
+# ── Gripper state machine ─────────────────────────────────────────────────────
+# Franka parallel gripper in Robosuite/LIBERO:
+#   action[-1] > 0  → close gripper (grasping)
+#   action[-1] < 0  → open  gripper (releasing)
+#
+# Gripper finger qpos (abs_sum = abs(q0) + abs(q1)):
+#   0.000  = fully closed (fingers touching)
+#   ~0.080 = fully open
+enable_gripper_sm: true
+gripper_close_action_threshold: 0.0  # action > 0 triggers CLOSING phase
+
+# Thresholds on abs_sum of finger qpos (meters, not degrees; 0.000 = closed, ~0.080 = open).
+# Required ordering (validated in SimSmartClientConfig.__post_init__): empty <= grasp < open.
+#   empty == grasp → no "still-closing" dead-zone (aggressive empty detection).
+#   empty <  grasp → adds a dead-zone [empty, grasp) treated as "still closing" (e.g. 0.008).
+# NOTE: empty MUST NOT exceed grasp — the GRASP_SUCCESS check runs first in CLOSING, so a
+#   larger empty value is silently clamped to grasp and has no effect (was 0.04 → =grasp here).
+gripper_pos_sum_empty_threshold: 0.020   # qpos_sum below this AND no contact → empty grasp
+gripper_pos_sum_grasp_threshold: 0.020   # qpos_sum at/above this OR contact → grasp confirmed
+gripper_pos_sum_open_threshold:  0.050   # qpos_sum above this → gripper open (skip CLOSING eval)
+
+gripper_confirm_steps: 3             # consecutive steps to confirm empty_grasp / slip
+sm_activation_delay: 10             # skip first N policy steps (episode init)
+closing_qpos_velocity_epsilon: 0.001  # velocity guard: 1 mm/step; 0.0 to disable
+max_empty_grasp_retries: 3
+
+# ── Home-reset recovery ────────────────────────────────────────────────────────
+enable_home_reset: true
+home_reset_warmup_steps: 5 # 15
+
+# ── Rewind mode ────────────────────────────────────────────────────────────────
+rewind_mode: "set_state"            # MuJoCo sim.set_state() (recommended for sim)
+
+rewind_buffer_steps: 25 #60             # snapshots to keep (2s at 30 Hz)
+rewind_warmup_steps: 5 #10             # hold-action steps after rewind to refill context
+rewind_step_back: 0                 # 0 = oldest snapshot (maximum rewind distance)
+
+# action_replay mode only:
+rewind_gripper_open_val: -1.0
+rewind_min_net_displacement: 0.0
+
+# ── Multi-candidate client re-ranking (Phase 2) ────────────────────────────────
+# Weight for execution-continuity score in client-side re-ranking:
+#   final_score = (1 - alpha) * server_score + alpha * continuity_score
+#   continuity_score = -||candidate[0] - last_executed_action||₂
+# 0.0 = use server ranking unchanged; 1.0 = pure continuity.
+client_smooth_alpha: 0.4 #0.3
+
+# Joint-limit gate: candidates with any action outside [min, max] are discarded.
+# Libero actions are in normalized policy space (approximately [-1, 1]):
+action_limit_min: -1.5
+action_limit_max: 1.5
+
+# Per-bundle server score normalization before combining with continuity:
+#   "softmax" — scale-invariant (recommended); "minmax"; "none"
+server_score_normalize: "softmax"
+
+# Spread-based uncertainty slow mode:
+#   When rolling mean spread_l2 > threshold, alpha is scaled up by
+#   spread_slow_alpha_scale to emphasise continuity under high uncertainty.
+#   spread_l2 is computed in normalized policy space (mean ≈ 0.05–0.15).
+spread_uncertainty_threshold: 0.08  # normalized policy space (NOT degree space)
+spread_slow_alpha_scale: 1.5        # alpha multiplier; capped at 0.9
+spread_slow_mode_window: 5          # rolling window size for spread_l2 average
+
+# ── Phase 3: data collection ───────────────────────────────────────────────────
+# If set, writes per-episode outcome records to <data_collect_dir>/client_outcomes.jsonl
+# for offline joining with the server's candidates.jsonl (keyed by episode_id).
+# data_collect_dir: null            # set via CLI: --data_collect_dir=.../mc_data
+
+# ── Trajectory recording ───────────────────────────────────────────────────────
+record_trajectory: true
+trajectory_dir: "mc_trajectories"
+
+# ── Output root (optional prefix for all output paths) ────────────────────────
+# When set, prepended to: data_collect_dir, trajectory_dir, results_dir,
+#   timing_output_dir, video_dir, queue_size_monitor_path.
+# save_root_path: ""               # e.g. "./outputs/eval/libero/run1"
+
+# ── Results / output ───────────────────────────────────────────────────────────
+results_dir: "./libero_multicand_results"
+save_results: true
+timing_output_dir: null
+
+# ── Video recording ────────────────────────────────────────────────────────────
+save_video: false
+video_camera: "image"
+video_dir: "videos"
+video_fps: 30
+
+# ── Queue monitor ──────────────────────────────────────────────────────────────
+queue_size_monitor_interval: 5
+queue_size_monitor_path: "queue_size.png"
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+log_level: "WARNING"
+log_candidate_stats: true
