@@ -2,18 +2,15 @@
 
 **From Pipeline Measurement to Proprioceptive Retry**
 
+<p align="center"><b>FAR System Demo — Pick-and-Place with Failure Recovery (Smolvla, SO-101)</b></p>
+
 <video src="media/readme/far_test.mp4" autoplay loop muted playsinline style="max-width:100%"></video>
 
-<table>
-<tr>
-<td align="center" width="50%"><b>With FAR (failure recovery)</b><br>
-<video src="media/readme/far_compare.mp4" autoplay loop muted playsinline style="max-width:100%"></video>
-</td>
-<td align="center" width="50%"><b>Without FAR (baseline)</b><br>
-<video src="media/readme/no_far_compare.mp4" autoplay loop muted playsinline style="max-width:100%"></video>
-</td>
-</tr>
-</table>
+<p align="center">
+<b>Pi05 With FAR (failure recovery)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pi05 Without FAR (baseline)</b>
+</p>
+
+<video src="media/readme/far_compare.mp4" autoplay loop muted playsinline style="width:49%;display:inline-block"></video><video src="media/readme/no_far_compare.mp4" autoplay loop muted playsinline style="width:49%;display:inline-block;float:right"></video>
 
 ---
 
