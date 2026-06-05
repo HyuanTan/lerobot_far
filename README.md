@@ -4,6 +4,17 @@
 
 <video src="media/readme/far_test.mp4" autoplay loop muted playsinline style="max-width:100%"></video>
 
+<table>
+<tr>
+<td align="center" width="50%"><b>With FAR (failure recovery)</b><br>
+<video src="media/readme/far_compare.mp4" autoplay loop muted playsinline style="max-width:100%"></video>
+</td>
+<td align="center" width="50%"><b>Without FAR (baseline)</b><br>
+<video src="media/readme/no_far_compare.mp4" autoplay loop muted playsinline style="max-width:100%"></video>
+</td>
+</tr>
+</table>
+
 ---
 
 ## About
@@ -320,11 +331,6 @@ For full experiment commands see [docs/so101_client-server.md](docs/so101_client
 ## TODO
 
 - [ ] Proprioceptive failure detector: stall / collision / drop detection
-- [ ] Automatic retry / recovery controller
-- [ ] Latency breakdown logging (obs → server → action dispatch)
-- [ ] Evaluation suite: success rate vs. inference latency sweep
-- [ ] Fine-tuning guide for SO-101 with custom tasks
-- [ ] Docker Compose for server + tunnel setup
 
 ---
 
