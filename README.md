@@ -1,177 +1,344 @@
-<p align="center">
-  <img alt="LeRobot, Hugging Face Robotics Library" src="./media/readme/lerobot-logo-thumbnail.png" width="100%">
-</p>
+# Assessment and Failure Recovery in Remote Vision-Language-Action Deployment
 
-<div align="center">
+**From Pipeline Measurement to Proprioceptive Retry**
 
-[![Tests](https://github.com/huggingface/lerobot/actions/workflows/latest_deps_tests.yml/badge.svg?branch=main)](https://github.com/huggingface/lerobot/actions/workflows/latest_deps_tests.yml?query=branch%3Amain)
-[![Tests](https://github.com/huggingface/lerobot/actions/workflows/docker_publish.yml/badge.svg?branch=main)](https://github.com/huggingface/lerobot/actions/workflows/docker_publish.yml?query=branch%3Amain)
-[![Python versions](https://img.shields.io/pypi/pyversions/lerobot)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/huggingface/lerobot/blob/main/LICENSE)
-[![Status](https://img.shields.io/pypi/status/lerobot)](https://pypi.org/project/lerobot/)
-[![Version](https://img.shields.io/pypi/v/lerobot)](https://pypi.org/project/lerobot/)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.1-ff69b4.svg)](https://github.com/huggingface/lerobot/blob/main/CODE_OF_CONDUCT.md)
-[![Discord](https://img.shields.io/badge/Discord-Join_Us-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/q8Dzzpym3f)
+---
 
-</div>
+## About
 
-**LeRobot** aims to provide models, datasets, and tools for real-world robotics in PyTorch. The goal is to lower the barrier to entry so that everyone can contribute to and benefit from shared datasets and pretrained models.
+This repository implements an experimental framework for **measuring, assessing, and recovering from failures** in remote VLA (Vision-Language-Action) deployments, built on top of [LeRobot](https://github.com/huggingface/lerobot) with the open-source [SO-101](https://huggingface.co/docs/lerobot/so101) robotic arm.
 
-🤗 A hardware-agnostic, Python-native interface that standardizes control across diverse platforms, from low-cost arms (SO-100) to humanoids.
+**Key contributions:**
 
-🤗 A standardized, scalable LeRobotDataset format (Parquet + MP4 or images) hosted on the Hugging Face Hub, enabling efficient storage, streaming and visualization of massive robotic datasets.
+- **Client–Server async inference**: Jetson Nano (edge) ↔ GPU server asynchronous policy execution, decoupling action prediction from robot control to eliminate inference-wait stalls.
+- **Pipeline measurement**: End-to-end latency profiling across the async inference pipeline (observation queue, inference, action dispatch).
+- **Failure detection & recovery**: Gripper-feedback state machine (proprioceptive monitoring) with automatic retry and recovery strategies on detected failures (empty grasp, slip, stall).
+- **RTC integration**: Real-Time Chunking (RTC) for smooth chunk transitions with SmolVLA / Pi0.5 policies over the async transport.
 
-🤗 State-of-the-art policies that have been shown to transfer to the real-world ready for training and deployment.
+**Supported policies:** SmolVLA, Pi0.5
 
-🤗 Comprehensive support for the open-source ecosystem to democratize physical AI.
+**Hardware:** SO-101 follower arm + Jetson Nano (client) + GPU workstation (server)
 
-## Quick Start
 
-LeRobot can be installed directly from PyPI.
+> **Hardware & Checklist** → [docs/jetson-so101_hardware.md](docs/jetson-so101_hardware.md)  
+> **Data Collection** → [docs/data_collection.md](docs/data_collection.md)  
+> **Model Training** → [docs/training.md](docs/training.md)  
+> **Client–Server Experiments** → [docs/so101_client-server.md](docs/so101_client-server.md)  
+> **Experiments & Results** → [docs/experiments.md](docs/experiments.md)  
+
+---
+
+## Installation
+
+This repository ships two `pyproject.toml` variants, selected by symlink:
+
+```
+pyproject_original.toml      ← standard server install (torch, torchvision, opencv included)
+pyproject_jetson_nano.toml   ← Jetson install (torch/cv2/numpy provided by JetPack, stripped from deps)
+pyproject.toml  →  pyproject_original.toml   (default symlink, tracked in git)
+```
+
+### Server (GPU workstation)
+
+Requires Python ≥ 3.12. The default `pyproject.toml` symlink already points to `pyproject_original.toml`.
 
 ```bash
-pip install lerobot
-lerobot-info
+git clone <this-repo>
+cd lerobot_far
+
+# Verify symlink (should show pyproject_original.toml)
+ls -la pyproject.toml
+
+uv venv --python 3.12
+source .venv/bin/activate
+
+uv pip install -U pip setuptools wheel
+uv pip install -e .
+
+# Install extras as needed
+uv pip install -e ".[async]"     # async inference (gRPC transport)
+uv pip install -e ".[smolvla]"   # SmolVLA policy
+uv pip install -e ".[pi]"        # Pi0.5 policy
 ```
 
-> [!IMPORTANT]
-> For detailed installation guide, please see the [Installation Documentation](https://huggingface.co/docs/lerobot/installation).
+### Client (Jetson Nano)
 
-## Robots & Control
+#### 1. Install jetson-containers
 
-<div align="center">
-  <img src="./media/readme/robots_control_video.webp" width="640px" alt="Reachy 2 Demo">
-</div>
-
-LeRobot provides a unified `Robot` class interface that decouples control logic from hardware specifics. It supports a wide range of robots and teleoperation devices.
-
-```python
-from lerobot.robots.myrobot import MyRobot
-
-# Connect to a robot
-robot = MyRobot(config=...)
-robot.connect()
-
-# Read observation and send action
-obs = robot.get_observation()
-action = model.select_action(obs)
-robot.send_action(action)
-```
-
-**Supported Hardware:** SO100, LeKiwi, Koch, HopeJR, OMX, EarthRover, Reachy2, Gamepads, Keyboards, Phones, OpenARM, Unitree G1.
-
-While these devices are natively integrated into the LeRobot codebase, the library is designed to be extensible. You can easily implement the Robot interface to utilize LeRobot's data collection, training, and visualization tools for your own custom robot.
-
-For detailed hardware setup guides, see the [Hardware Documentation](https://huggingface.co/docs/lerobot/integrate_hardware).
-
-## LeRobot Dataset
-
-To solve the data fragmentation problem in robotics, we utilize the **LeRobotDataset** format.
-
-- **Structure:** Synchronized MP4 videos (or images) for vision and Parquet files for state/action data.
-- **HF Hub Integration:** Explore thousands of robotics datasets on the [Hugging Face Hub](https://huggingface.co/lerobot).
-- **Tools:** Seamlessly delete episodes, split by indices/fractions, add/remove features, and merge multiple datasets.
-
-```python
-from lerobot.datasets.lerobot_dataset import LeRobotDataset
-
-# Load a dataset from the Hub
-dataset = LeRobotDataset("lerobot/aloha_mobile_cabinet")
-
-# Access data (automatically handles video decoding)
-episode_index=0
-print(f"{dataset[episode_index]['action'].shape=}\n")
-```
-
-Learn more about it in the [LeRobotDataset Documentation](https://huggingface.co/docs/lerobot/lerobot-dataset-v3)
-
-## SoTA Models
-
-LeRobot implements state-of-the-art policies in pure PyTorch, covering Imitation Learning, Reinforcement Learning, and Vision-Language-Action (VLA) models, with more coming soon. It also provides you with the tools to instrument and inspect your training process.
-
-<p align="center">
-  <img alt="Gr00t Architecture" src="./media/readme/VLA_architecture.jpg" width="640px">
-</p>
-
-Training a policy is as simple as running a script configuration:
+Follow the [jetson-containers setup guide](https://github.com/dusty-nv/jetson-containers/tree/master) on the Jetson host:
 
 ```bash
-lerobot-train \
-  --policy=act \
-  --dataset.repo_id=lerobot/aloha_mobile_cabinet
+# On Jetson host
+git clone https://github.com/dusty-nv/jetson-containers
+cd jetson-containers
+sudo apt-get update && sudo apt-get install -y python3-pip
+pip3 install -r requirements.txt
 ```
 
-| Category                   | Models                                                                                                                                                                                                                  |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Imitation Learning**     | [ACT](./docs/source/policy_act_README.md), [Diffusion](./docs/source/policy_diffusion_README.md), [VQ-BeT](./docs/source/policy_vqbet_README.md), [Multitask DiT Policy](./docs/source/policy_multi_task_dit_README.md) |
-| **Reinforcement Learning** | [HIL-SERL](./docs/source/hilserl.mdx), [TDMPC](./docs/source/policy_tdmpc_README.md) & QC-FQL (coming soon)                                                                                                             |
-| **VLAs Models**            | [Pi0Fast](./docs/source/pi0fast.mdx), [Pi0.5](./docs/source/pi05.mdx), [GR00T N1.5](./docs/source/policy_groot_README.md), [SmolVLA](./docs/source/policy_smolvla_README.md), [XVLA](./docs/source/xvla.mdx)            |
+#### 2. Switch pyproject symlink to the Jetson variant
 
-Similarly to the hardware, you can easily implement your own policy & leverage LeRobot's data collection, training, and visualization tools, and share your model to the HF Hub
-
-For detailed policy setup guides, see the [Policy Documentation](https://huggingface.co/docs/lerobot/bring_your_own_policies).
-
-## Inference & Evaluation
-
-Evaluate your policies in simulation or on real hardware using the unified evaluation script. LeRobot supports standard benchmarks like **LIBERO**, **MetaWorld** and more to come.
+On the **server / development machine** (before syncing to Jetson), or directly on Jetson:
 
 ```bash
-# Evaluate a policy on the LIBERO benchmark
-lerobot-eval \
-  --policy.path=lerobot/pi0_libero_finetuned \
-  --env.type=libero \
-  --env.task=libero_object \
-  --eval.n_episodes=10
+cd lerobot_far
+ln -sf pyproject_jetson_nano.toml pyproject.toml
+# Verify
+ls -la pyproject.toml   # should show → pyproject_jetson_nano.toml
 ```
 
-Learn how to implement your own simulation environment or benchmark and distribute it from the HF Hub by following the [EnvHub Documentation](https://huggingface.co/docs/lerobot/envhub)
+The Jetson variant comments out `torch`, `torchvision`, `numpy`, `opencv-python-headless`, and `cmake` because JetPack provides GPU-optimised builds of these inside the container.
 
-## Resources
+#### 3. Jetson udev rules (one-time setup)
 
-- **[Documentation](https://huggingface.co/docs/lerobot/index):** The complete guide to tutorials & API.
-- **[Chinese Tutorials: LeRobot+SO-ARM101中文教程-同济子豪兄](https://zihao-ai.feishu.cn/wiki/space/7589642043471924447)** Detailed doc for assembling, teleoperate, dataset, train, deploy. Verified by Seed Studio and 5 global hackathon players.
-- **[Discord](https://discord.gg/q8Dzzpym3f):** Join the `LeRobot` server to discuss with the community.
-- **[X](https://x.com/LeRobotHF):** Follow us on X to stay up-to-date with the latest developments.
-- **[Robot Learning Tutorial](https://huggingface.co/spaces/lerobot/robot-learning-tutorial):** A free, hands-on course to learn robot learning using LeRobot.
+Set persistent device names on the **Jetson host** so the arm and cameras always get the same path regardless of plug order. Do this before launching the container so the symlinks are visible inside it.
 
-## Citation
+**Motor arms** — bind by USB serial ID:
 
-If you use LeRobot in your project, please cite the GitHub repository to acknowledge the ongoing development and contributors:
+```bash
+# Find serial IDs (plug arms one at a time)
+udevadm info -a -n /dev/ttyACM0 | grep serial
 
-```bibtex
-@misc{cadene2024lerobot,
-    author = {Cadene, Remi and Alibert, Simon and Soare, Alexander and Gallouedec, Quentin and Zouitine, Adil and Palma, Steven and Kooijmans, Pepijn and Aractingi, Michel and Shukor, Mustafa and Aubakirova, Dana and Russi, Martino and Capuano, Francesco and Pascal, Caroline and Choghari, Jade and Moss, Jess and Wolf, Thomas},
-    title = {LeRobot: State-of-the-art Machine Learning for Real-World Robotics in Pytorch},
-    howpublished = "\url{https://github.com/huggingface/lerobot}",
-    year = {2024}
-}
+sudo tee /etc/udev/rules.d/99-so101.rules <<'EOF'
+SUBSYSTEM=="tty", ATTRS{serial}=="<leader-serial>",   SYMLINK+="ttyACM_so101leader"
+SUBSYSTEM=="tty", ATTRS{serial}=="<follower-serial>", SYMLINK+="ttyACM_so101follower"
+EOF
 ```
 
-If you are referencing our research or the academic paper, please also cite our ICLR publication:
+**Cameras** — bind by USB port path (webcams have no unique serial):
 
-<details>
-<summary><b>ICLR 2026 Paper</b></summary>
+```bash
+# Find the ID_PATH for each camera (plug cameras one at a time)
+udevadm info -q property -n /dev/video0 | grep -E 'ID_PATH|DEVPATH'
 
-```bibtex
-@inproceedings{cadenelerobot,
-  title={LeRobot: An Open-Source Library for End-to-End Robot Learning},
-  author={Cadene, Remi and Alibert, Simon and Capuano, Francesco and Aractingi, Michel and Zouitine, Adil and Kooijmans, Pepijn and Choghari, Jade and Russi, Martino and Pascal, Caroline and Palma, Steven and Shukor, Mustafa and Moss, Jess and Soare, Alexander and Aubakirova, Dana and Lhoest, Quentin and Gallou\'edec, Quentin and Wolf, Thomas},
-  booktitle={The Fourteenth International Conference on Learning Representations},
-  year={2026},
-  url={https://arxiv.org/abs/2602.22818}
-}
+sudo tee /etc/udev/rules.d/99-webcam.rules <<'EOF'
+# Top camera    (USB port 2.1)
+SUBSYSTEM=="video4linux", ENV{ID_PATH}=="platform-3610000.usb-usb-0:2.1:1.0", ENV{ID_V4L_CAPABILITIES}==":capture:", SYMLINK+="videotop",   MODE="0666"
+# Front camera  (USB port 2.4)
+SUBSYSTEM=="video4linux", ENV{ID_PATH}=="platform-3610000.usb-usb-0:2.4:1.0", ENV{ID_V4L_CAPABILITIES}==":capture:", SYMLINK+="videofront", MODE="0666"
+# Wrist camera  (USB port 1.3)
+SUBSYSTEM=="video4linux", ENV{ID_PATH}=="platform-3610000.usb-usb-0:1.3:1.0", ENV{ID_V4L_CAPABILITIES}==":capture:", SYMLINK+="videowrist", MODE="0666"
+EOF
 ```
 
-</details>
+> Adjust `ID_PATH` values to match your physical USB ports. Use `udevadm info -q property -n /dev/videoN | grep ID_PATH` to inspect each camera.
 
-## Contribute
+Apply and verify:
 
-We welcome contributions from everyone in the community! To get started, please read our [CONTRIBUTING.md](https://github.com/huggingface/lerobot/blob/main/CONTRIBUTING.md) guide. Whether you're adding a new feature, improving documentation, or fixing a bug, your help and feedback are invaluable. We're incredibly excited about the future of open-source robotics and can't wait to work with you on what's next—thank you for your support!
+```bash
+sudo udevadm control --reload-rules && sudo udevadm trigger
 
-<p align="center">
-  <img alt="SO101 Video" src="./media/readme/so100_video.webp" width="640px">
-</p>
+ll /dev/videotop /dev/videofront /dev/videowrist
+ll /dev/ttyACM_so101leader /dev/ttyACM_so101follower
 
-<div align="center">
-<sub>Built by the <a href="https://huggingface.co/lerobot">LeRobot</a> team at <a href="https://huggingface.co">Hugging Face</a> with ❤️</sub>
-</div>
+# Quick camera stream check
+ffplay -f v4l2 -input_format mjpeg -video_size 800x600 -framerate 30 /dev/videotop
+ffplay -f v4l2 -input_format mjpeg -video_size 640x480 -framerate 30 /dev/videofront
+```
+
+For full hardware setup details, see [docs/jetson-so101_hardware.md](docs/jetson-so101_hardware.md).
+
+#### 4. Launch the container and install
+
+> **Change paths to match your setup** — replace `/data/code/lerobot_far` with the actual path where you cloned this repo on the Jetson, and `/data/hf` with your HuggingFace cache directory.
+
+```bash
+# On Jetson host — launch (or re-attach to) the container
+jetson-containers run -it \
+  --name lerobot_far \
+  -v /data/code/lerobot_far:/opt/lerobot \
+  -v /data/hf:/data/hf \
+  -e HF_HOME=/data/hf \
+  -w /opt/lerobot \
+  $(autotag lerobot)
+```
+
+Common container management commands:
+
+```bash
+# List running containers
+docker ps
+
+# Re-enter a running container (after detach or ssh reconnect)
+docker exec -it lerobot_far /bin/bash
+
+# List all containers (including stopped)
+docker ps -a
+
+# Stop / remove
+docker stop lerobot_far
+docker rm   lerobot_far
+
+# Check GPU / JetPack inside container
+python3 -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+```
+
+Inside the container:
+
+```bash
+export PIP_INDEX_URL=https://pypi.org/simple
+unset PIP_EXTRA_INDEX_URL
+export HF_HOME=/data/hf
+
+/opt/venv/bin/python3 -m pip install -U pip setuptools wheel
+/opt/venv/bin/python3 -m pip install -e . --no-build-isolation
+```
+
+---
+
+## Getting Started
+
+### Quick Examples
+
+The examples below use `smart_robot_client` — a drop-in replacement for `robot_client` that adds a **gripper-feedback state machine** for failure detection and recovery. Set `--enable_gripper_sm=false` to fall back to plain `RobotClient` behavior with zero overhead.
+
+**State machine overview:**
+
+```
+policy outputs action_chunk
+        ↓
+  scan action queue  →  infer gripper phase
+        ↓                 (APPROACHING / CLOSING / HOLDING / DROPPING / OPENING)
+  bus.sync_read(Present_Load, ["gripper"])   ← ~1–2 ms, no camera
+        ↓
+  classify event
+        ↓
+  decide ─── CONTINUE    nominal path
+           ├─ REINFER    drain queue + force re-inference (slip detected, empty gras)
+           ├─ LIFT_RETRY lift arm + open + reinfer  (slip detected, empty gras, retry method)
+           ├─ REWIND_RETRY replay actions in reverse + reinfer  (slip detected, empty gras, retry method)
+           ├─ RECOVERY   go home + reinfer  (slip detected, empty gras, retry method)
+           └─ STOP       too many retries
+```
+
+#### 1. Start the Policy Server (GPU workstation)
+
+```bash
+cd lerobot_far
+export CUDA_VISIBLE_DEVICES=0
+
+uv run python -m lerobot.async_inference.policy_server \
+    --host=127.0.0.1 \
+    --port=8080 \
+    --fps=10
+```
+
+To expose the server to the Jetson over SSH tunnel:
+
+```bash
+# Run on Jetson — forwards local port 8080 to the server
+ssh -J <gateway> <server-host> -L 8080:127.0.0.1:8080
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--host` | `127.0.0.1` | Listen address (`0.0.0.0` for external access) |
+| `--port` | `8080` | gRPC port |
+| `--fps` | `30` | Target inference rate |
+| `--inference_latency` | `0.033` | Minimum inference latency (s) |
+| `--obs_queue_timeout` | `1` | Timeout waiting for observation (s) |
+
+#### 2. Start the Robot Client (Jetson Nano)
+
+**SmolVLA + gripper state machine:**
+
+```bash
+python -m lerobot.async_inference.smart_robot_client \
+    --robot.type=so100_follower \
+    --robot.port=/dev/ttyACM_so101follower \
+    --robot.cameras="{
+        top:   {type: opencv, index_or_path: '/dev/videotop',   width: 800, height: 600, fps: 30, backend: 200, fourcc: MJPG},
+        wrist: {type: opencv, index_or_path: '/dev/videowrist', width: 800, height: 600, fps: 30, backend: 200, fourcc: MJPG},
+        front: {type: opencv, index_or_path: '/dev/videofront', width: 640, height: 480, fps: 30, backend: 200, fourcc: MJPG}}" \
+    --robot.id=cse_so101follower \
+    --task="Pick up the red cube and put it into the orange box." \
+    --server_address=127.0.0.1:8080 \
+    --policy_type=smolvla \
+    --pretrained_name_or_path=HollyTan/so101_smolvla_pick_place \
+    --policy_device=cuda \
+    --client_device=cpu \
+    --actions_per_chunk=50 \
+    --chunk_size_threshold=0.5 \
+    --aggregate_fn_name=latest_only \
+    --fps=10 \
+    --enable_gripper_sm=true \
+    --gripper_load_grasp_threshold=80.0 \
+    --max_empty_grasp_retries=3 \
+    --debug_visualize_queue_size=True
+```
+
+**Pi0.5 + RTC + gripper state machine:**
+
+```bash
+python -m lerobot.async_inference.smart_robot_client \
+    --robot.type=so100_follower \
+    --robot.port=/dev/ttyACM_so101follower \
+    --robot.cameras="{
+        top:   {type: opencv, index_or_path: '/dev/videotop',   width: 800, height: 600, fps: 30, backend: 200, fourcc: MJPG},
+        wrist: {type: opencv, index_or_path: '/dev/videowrist', width: 800, height: 600, fps: 30, backend: 200, fourcc: MJPG},
+        front: {type: opencv, index_or_path: '/dev/videofront', width: 640, height: 480, fps: 30, backend: 200, fourcc: MJPG}}" \
+    --robot.id=cse_so101follower \
+    --task="Pick up the red cube and put it into the orange box." \
+    --server_address=127.0.0.1:8080 \
+    --policy_type=pi05 \
+    --pretrained_name_or_path=HollyTan/pi05_so101_pick_place-v2.0_subset_50eps_20k \
+    --policy_device=cuda \
+    --client_device=cuda \
+    --actions_per_chunk=50 \
+    --chunk_size_threshold=0.5 \
+    --aggregate_fn_name=latest_only \
+    --fps=10 \
+    --interpolation_multiplier=3 \
+    --rtc_execution_horizon=20 \
+    --enable_gripper_sm=true \
+    --gripper_load_grasp_threshold=80.0 \
+    --max_empty_grasp_retries=3 \
+    --debug_visualize_queue_size=True
+```
+
+Key client parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `--fps` | Control loop rate — must match server `--fps` |
+| `--actions_per_chunk` | Number of actions per inference chunk |
+| `--chunk_size_threshold` | Queue depth ratio to trigger next observation request |
+| `--aggregate_fn_name` | Chunk overlap aggregation: `latest_only` or `weighted_average` |
+| `--interpolation_multiplier` | Motor control upsampling (1=off, 2–3=recommended); effective rate = `fps × multiplier` |
+| `--rtc_execution_horizon` | RTC replanning window in steps (0=off, 20=recommended; SmolVLA/Pi0.5 only) |
+| `--enable_gripper_sm` | Enable gripper state machine (`true` / `false`) |
+| `--gripper_load_grasp_threshold` | Load threshold (raw units) to confirm a grasp |
+| `--max_empty_grasp_retries` | Max retries before STOP |
+
+> **Note:** `server --fps` and `client --fps` must match.
+
+For full experiment commands see [docs/so101_client-server.md](docs/so101_client-server.md).
+
+---
+
+## TODO
+
+- [ ] Proprioceptive failure detector: stall / collision / drop detection
+- [ ] Automatic retry / recovery controller
+- [ ] Latency breakdown logging (obs → server → action dispatch)
+- [ ] Evaluation suite: success rate vs. inference latency sweep
+- [ ] Fine-tuning guide for SO-101 with custom tasks
+- [ ] Docker Compose for server + tunnel setup
+
+---
+
+## Acknowledgments
+
+- [LeRobot](https://github.com/huggingface/lerobot) — Hugging Face's real-world robotics library; this project extends its async inference infrastructure.
+- [SO-101](https://huggingface.co/docs/lerobot/so101) — Low-cost open-source robot arm by Hugging Face.
+- [jetson-containers](https://github.com/dusty-nv/jetson-containers) — NVIDIA Jetson ML container build system.
+- [SmolVLA](https://huggingface.co/papers/2506.01844) — Compact VLA model from Hugging Face.
+- [π₀ / π₀.₅](https://www.physicalintelligence.company/blog/pi0) — Flow-matching VLA models from Physical Intelligence (pi0 / pi05 in this codebase).
+- [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO) — Lifelong robot learning benchmark suite used for simulation evaluation.
+- [RTC (Real-Time Chunking)](docs/source/rtc.mdx) — Smooth async chunk execution for flow-matching policies.
+- Parts of this documentation and code were written with the assistance of [Claude Code](https://claude.ai/code) (Anthropic).
+
+---
+
+## License
+
+This project is licensed under the Apache 2.0 License — see [LICENSE](LICENSE) for details.
