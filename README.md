@@ -2,6 +2,8 @@
 
 **From Pipeline Measurement to Proprioceptive Retry**
 
+<video src="media/readme/far_test.mp4" autoplay loop muted playsinline style="max-width:100%"></video>
+
 ---
 
 ## About

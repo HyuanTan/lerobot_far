@@ -123,7 +123,7 @@ class PolicyServer(services_pb2_grpc.AsyncInferenceServicer):
         self._use_relative_actions: bool = False
         self._relative_step: RelativeActionsProcessorStep | None = None
         self._normalizer_step: NormalizerProcessorStep | None = None
-        # Bug 4: warn once when inference_latency throttle has no effect.
+        # Warn once when inference_latency throttle has no effect.
         self._inference_latency_warned: bool = False
 
     @property

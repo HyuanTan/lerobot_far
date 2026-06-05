@@ -1917,7 +1917,6 @@ class SmartRobotClient(RobotClient):
         )
 
         # Drain queue, increment generation, reset SM phase state.
-        # Drain queue, increment generation, reset SM phase state.
         # must_go will be cleared below once the trajectory is armed so that the
         # background sender's context-filling obs (must_go=False) do not trigger
         # premature inference during rewind.  must_go=True is re-armed after drain().
@@ -2928,7 +2927,6 @@ class SmartRobotClient(RobotClient):
                 time.sleep(max(0, control_interval - (time.perf_counter() - t_loop)))
                 continue
 
-            # ── Non-blocking REWIND_RETRY: execute one trajectory step per iteration ──
             # ── Non-blocking REWIND_RETRY: execute one trajectory step per iteration ──
             # Replays action history in reverse. Background obs sender captures
             # camera+joints each step so the policy context contains the real

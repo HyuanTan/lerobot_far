@@ -170,7 +170,7 @@ class BaseAsyncClient(ABC):
         self._next_obs_is_episode_start: bool = False
 
         # One-time warning flags (avoid log spam across steps).
-        # Bug 3: warn once when server chunk size < configured actions_per_chunk.
+        # Warn once when server chunk size < configured actions_per_chunk.
         self._chunk_size_mismatch_warned: bool = False
 
         # Timing statistics (disabled until enable_timing() is called)
@@ -567,7 +567,7 @@ class BaseAsyncClient(ABC):
 
                 self.action_chunk_size = max(self.action_chunk_size, len(timed_actions))
 
-                # Bug 3: warn once if the server delivers fewer actions than configured.
+                # Warn once if the server delivers fewer actions than configured.
                 # infer_delay is capped using actions_per_chunk (config), but if the actual
                 # chunk is shorter the cap is too loose — infer_delay could exceed real chunk
                 # size and trigger RTC assertion failures in the policy.
