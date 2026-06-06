@@ -6,6 +6,29 @@ Assessment and Failure Recovery in Remote Vision-Language-Action Deployment
 From Pipeline Measurement to Proprioceptive Retry
 </h2>
 
+
+## About
+
+This repository implements an experimental framework for **measuring, assessing, and recovering from failures** in remote VLA (Vision-Language-Action) deployments, built on top of [LeRobot](https://github.com/huggingface/lerobot) with the open-source [SO-101](https://huggingface.co/docs/lerobot/so101) robotic arm.
+
+**Key contributions:**
+- **Pipeline measurement**: End-to-end latency profiling across the async inference pipeline (observation queue, inference, action dispatch).
+- **Failure detection & recovery**: Gripper-feedback state machine (proprioceptive monitoring) with automatic retry and recovery strategies on detected failures (empty grasp, slip, stall).
+
+**Supported policies:** SmolVLA, Pi0.5
+
+**Hardware:** SO-101 follower arm + Jetson Nano 8G (client) + GPU workstation (server, H100)
+
+
+> **Hardware & Checklist** → [docs/jetson-so101_hardware.md](docs/jetson-so101_hardware.md)  
+> **Data Collection** → [docs/data_collection.md](docs/data_collection.md)  
+> **Model Training** → [docs/training.md](docs/training.md)  
+> **Client–Server Experiments** → [docs/so101_client-server.md](docs/so101_client-server.md)  
+> **Experiments & Results** → [docs/experiments.md](docs/experiments.md)  
+
+---
+## Demo
+
 <p align="center">
 <b>SmolVLA With FAR (failure recovery)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>SmolVLA Without FAR</b>
 </p>
@@ -21,30 +44,6 @@ From Pipeline Measurement to Proprioceptive Retry
 <p align="center">
 <img src="media/readme/far_compare_pi05.webp" width="30%" max-height="200px"/><img src="media/readme/no_far_compare_pi05.webp" width="30%" max-height="200px"/>
 </p>
-
----
-
-## About
-
-This repository implements an experimental framework for **measuring, assessing, and recovering from failures** in remote VLA (Vision-Language-Action) deployments, built on top of [LeRobot](https://github.com/huggingface/lerobot) with the open-source [SO-101](https://huggingface.co/docs/lerobot/so101) robotic arm.
-
-**Key contributions:**
-
-- **Client–Server async inference**: Jetson Nano (edge) ↔ GPU server asynchronous policy execution, decoupling action prediction from robot control to eliminate inference-wait stalls.
-- **Pipeline measurement**: End-to-end latency profiling across the async inference pipeline (observation queue, inference, action dispatch).
-- **Failure detection & recovery**: Gripper-feedback state machine (proprioceptive monitoring) with automatic retry and recovery strategies on detected failures (empty grasp, slip, stall).
-- **RTC integration**: Real-Time Chunking (RTC) for smooth chunk transitions with SmolVLA / Pi0.5 policies over the async transport.
-
-**Supported policies:** SmolVLA, Pi0.5
-
-**Hardware:** SO-101 follower arm + Jetson Nano 8G (client) + GPU workstation (server, H100)
-
-
-> **Hardware & Checklist** → [docs/jetson-so101_hardware.md](docs/jetson-so101_hardware.md)  
-> **Data Collection** → [docs/data_collection.md](docs/data_collection.md)  
-> **Model Training** → [docs/training.md](docs/training.md)  
-> **Client–Server Experiments** → [docs/so101_client-server.md](docs/so101_client-server.md)  
-> **Experiments & Results** → [docs/experiments.md](docs/experiments.md)  
 
 ---
 
