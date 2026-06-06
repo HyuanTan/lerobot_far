@@ -1,6 +1,10 @@
-# Assessment and Failure Recovery in Remote Vision-Language-Action Deployment
+<h1 align="center">
+Assessment and Failure Recovery in Remote Vision-Language-Action Deployment
+</h1>
 
-**From Pipeline Measurement to Proprioceptive Retry**
+<h2 align="center">
+From Pipeline Measurement to Proprioceptive Retry
+</h2>
 
 <p align="center">
 <b>SmolVLA With FAR (failure recovery)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>SmolVLA Without FAR</b>
@@ -33,7 +37,7 @@ This repository implements an experimental framework for **measuring, assessing,
 
 **Supported policies:** SmolVLA, Pi0.5
 
-**Hardware:** SO-101 follower arm + Jetson Nano (client) + GPU workstation (server)
+**Hardware:** SO-101 follower arm + Jetson Nano 8G (client) + GPU workstation (server, H100)
 
 
 > **Hardware & Checklist** → [docs/jetson-so101_hardware.md](docs/jetson-so101_hardware.md)  
@@ -235,7 +239,7 @@ export CUDA_VISIBLE_DEVICES=0
 uv run python -m lerobot.async_inference.policy_server \
     --host=127.0.0.1 \
     --port=8080 \
-    --fps=10
+    --fps=20
 ```
 
 To expose the server to the Jetson over SSH tunnel:
@@ -255,10 +259,11 @@ ssh -J <gateway> <server-host> -L 8080:127.0.0.1:8080
 
 #### 2. Start the Robot Client (Jetson Nano)
 
-**SmolVLA + gripper state machine:**
+**SmolVLA + NO RTC + gripper state machine:**
 
 ```bash
 python -m lerobot.async_inference.smart_robot_client \
+    --config_path "src/lerobot/async_inference/config/so101/async_client_sm.yaml" \
     --robot.type=so100_follower \
     --robot.port=/dev/ttyACM_so101follower \
     --robot.cameras="{
@@ -266,26 +271,28 @@ python -m lerobot.async_inference.smart_robot_client \
         wrist: {type: opencv, index_or_path: '/dev/videowrist', width: 800, height: 600, fps: 30, backend: 200, fourcc: MJPG},
         front: {type: opencv, index_or_path: '/dev/videofront', width: 640, height: 480, fps: 30, backend: 200, fourcc: MJPG}}" \
     --robot.id=cse_so101follower \
-    --task="Pick up the red cube and put it into the orange box." \
+    --task="Pick up the yellow cube and put it into the orange box." \
     --server_address=127.0.0.1:8080 \
     --policy_type=smolvla \
-    --pretrained_name_or_path=HollyTan/so101_smolvla_pick_place \
+    --pretrained_name_or_path=jadenovalight/smolvla_pick-place_v2.4 \
     --policy_device=cuda \
     --client_device=cpu \
     --actions_per_chunk=50 \
     --chunk_size_threshold=0.5 \
     --aggregate_fn_name=latest_only \
-    --fps=10 \
+    --fps=20 \
     --enable_gripper_sm=true \
-    --gripper_load_grasp_threshold=80.0 \
     --max_empty_grasp_retries=3 \
-    --debug_visualize_queue_size=True
+    --obs_image_use_model_resize=true \
+    --obs_image_resize_hw="{'top': [480, 640], 'wrist': [480, 640], 'front': [480, 640]}" \
+    --obs_image_jpeg_quality=85
 ```
 
 **Pi0.5 + RTC + gripper state machine:**
 
 ```bash
 python -m lerobot.async_inference.smart_robot_client \
+    --config_path "src/lerobot/async_inference/config/so101/async_client_sm.yaml" \
     --robot.type=so100_follower \
     --robot.port=/dev/ttyACM_so101follower \
     --robot.cameras="{
@@ -293,22 +300,22 @@ python -m lerobot.async_inference.smart_robot_client \
         wrist: {type: opencv, index_or_path: '/dev/videowrist', width: 800, height: 600, fps: 30, backend: 200, fourcc: MJPG},
         front: {type: opencv, index_or_path: '/dev/videofront', width: 640, height: 480, fps: 30, backend: 200, fourcc: MJPG}}" \
     --robot.id=cse_so101follower \
-    --task="Pick up the red cube and put it into the orange box." \
+    --task="Pick up the yellow cube and put it into the orange box." \
     --server_address=127.0.0.1:8080 \
     --policy_type=pi05 \
-    --pretrained_name_or_path=HollyTan/pi05_so101_pick_place-v2.0_subset_50eps_20k \
+    --pretrained_name_or_path=HollyTan/pi05_so101_pick_place-v2.4basev2.2_abs_nofreeze_8b \
     --policy_device=cuda \
     --client_device=cuda \
+    --obs_image_use_model_resize=true \
+    --obs_image_resize_hw="{top: [224, 224], wrist: [224, 224], front: [224, 224]}" \
+    --obs_image_jpeg_quality=85 \
     --actions_per_chunk=50 \
     --chunk_size_threshold=0.5 \
     --aggregate_fn_name=latest_only \
-    --fps=10 \
-    --interpolation_multiplier=3 \
+    --fps=20 \
     --rtc_execution_horizon=20 \
     --enable_gripper_sm=true \
-    --gripper_load_grasp_threshold=80.0 \
     --max_empty_grasp_retries=3 \
-    --debug_visualize_queue_size=True
 ```
 
 Key client parameters:
