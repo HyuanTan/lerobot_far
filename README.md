@@ -71,27 +71,31 @@ This repository implements an experimental framework for **measuring, assessing,
 </p>
 
 <p align="center">
-<b>Without FAR (Baseline)</b>
+<b>SmolVLA</b>
 </p>
 
 <p align="center">
-<b>SmolVLA</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pi05</b>
+<b>Without FAR</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>With FAR (Failure-Aware Recovery)</b>
 </p>
 
 <p align="center">
-<img src="media/readme/no_far_smolvla.webp" style="max-height:250px; width:auto"/><img src="media/readme/no_far_compare_pi05.webp" style="max-height:250px; width:auto"/>
+<img src="media/readme/no_far_smolvla.webp" style="max-height:350px; width:auto; max-width:45%"/><img src="media/readme/far_smolvla.webp" style="max-height:350px; width:auto; max-width:45%"/>
+</p>
+
+
+
+
+
+<p align="center">
+<b>Pi05</b>
 </p>
 
 <p align="center">
-<b>With FAR (Failure-Aware Recovery)</b>
+<b>Without FAR</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>With FAR (Failure-Aware Recovery)</b>
 </p>
 
 <p align="center">
-<b>SmolVLA</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pi05</b>
-</p>
-
-<p align="center">
-<img src="media/readme/far_smolvla.webp" style="max-height:250px; width:auto"/><img src="media/readme/far_compare_pi05.webp" style="max-height:250px; width:auto"/>
+<img src="media/readme/no_far_compare_pi05.webp" width="45%" style="max-height:350px"/><img src="media/readme/far_compare_pi05.webp" width="45%" style="max-height:350px"/>
 </p>
 
 ---
