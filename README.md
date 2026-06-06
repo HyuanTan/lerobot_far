@@ -9,11 +9,13 @@ From Pipeline Measurement to Proprioceptive Retry
 
 ## About
 
-This repository implements an experimental framework for **measuring, assessing, and recovering from failures** in remote VLA (Vision-Language-Action) deployments, built on top of [LeRobot](https://github.com/huggingface/lerobot) with the open-source [SO-101](https://huggingface.co/docs/lerobot/so101) robotic arm.
+This repository implements an experimental framework for **measuring, assessing, and recovering from failures** in remote VLA (Vision-Language-Action) deployment. It is built on top of [LeRobot](https://github.com/huggingface/lerobot) and supports evaluation on both the open-source [SO-101](https://huggingface.co/docs/lerobot/so101) robotic arm and **LIBERO** simulation environments.
 
 **Key contributions:**
-- **Pipeline measurement**: End-to-end latency profiling across the async inference pipeline (observation queue, inference, action dispatch).
-- **Failure detection & recovery**: Gripper-feedback state machine (proprioceptive monitoring) with automatic retry and recovery strategies on detected failures (empty grasp, slip, stall).
+
+- **Pipeline measurement**: End-to-end latency profiling across the remote async inference pipeline, including observation queueing, inference, network communication, and action dispatch.
+- **LIBERO pipeline evaluation**: Pipeline-level testing and latency analysis in LIBERO simulation before real-robot deployment.
+- **FAR: Failure-Aware Recovery**: A recovery framework that detects failures such as empty grasp and slip using existing proprioceptive and visual feedback, and performs automatic retry or recovery without adding new sensors.
 
 **Supported policies:** SmolVLA, Pi0.5
 
@@ -29,20 +31,55 @@ This repository implements an experimental framework for **measuring, assessing,
 ---
 ## Demo
 
+### LIBERO
+
 <p align="center">
-<b>SmolVLA With FAR (failure recovery)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>SmolVLA Without FAR</b>
+<b>LIBERO Evaluation - Pi05</b>
 </p>
 
 <p align="center">
-<img src="media/readme/far_smolvla.webp" width="30%" max-height="350px"/><img src="media/readme/no_far_smolvla.webp" width="30%" max-height="350px"/>
+<b>Without FAR</b>
+</p>
+
+
+<p align="center">
+<b>LIBERO-10</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Goal</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Object</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Spatial</b>
 </p>
 
 <p align="center">
-<b>Pi05 With FAR (failure recovery)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pi05 Without FAR</b>
+<img src="media/readme/10_ep0000_failed_pi05.webp" width="22%" max-height="250px"/><img src="media/readme/goal_ep0006_failed_pi05.webp" width="22%" max-height="250px"/><img src="media/readme/object_ep0018_failed_pi05.webp" width="22%" max-height="250px"/><img src="media/readme/spatial_ep0006_pi05_failed.webp" width="22%" max-height="250px"/>
+</p>
+
+
+<p align="center">
+<b>With FAR (Failure-Aware Recovery)</b>
 </p>
 
 <p align="center">
-<img src="media/readme/far_compare_pi05.webp" width="30%" max-height="200px"/><img src="media/readme/no_far_compare_pi05.webp" width="30%" max-height="200px"/>
+<b>LIBERO-10</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Goal</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Object</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Spatial</b>
+</p>
+
+<p align="center">
+<img src="media/readme/10_ep0000_success_pi05_retry.webp" width="22%" max-height="250px"/><img src="media/readme/goal_ep0007_success_pi05_retry.webp" width="22%" max-height="250px"/><img src="media/readme/object_ep0018_success_pi05_retry.webp" width="22%" max-height="250px"/><img src="media/readme/spatial_ep0006_success_pi05_retry.webp" width="22%" max-height="250px"/>
+</p>
+
+
+### SO-101
+
+<p align="center">
+<b>SmolVLA Without FAR</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>SmolVLA With FAR (failure recovery)</b>
+</p>
+
+<p align="center">
+<img src="media/readme/no_far_smolvla.webp" width="30%" max-height="350px"/><img src="media/readme/far_smolvla.webp" width="30%" max-height="350px"/>
+</p>
+
+<p align="center">
+<b>Pi05 Without FAR</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pi05 With FAR (failure recovery)</b>
+</p>
+
+<p align="center">
+<img src="media/readme/no_far_compare_pi05.webp" width="30%" max-height="200px"/><img src="media/readme/far_compare_pi05.webp" width="30%" max-height="200px"/>
 </p>
 
 ---
@@ -339,7 +376,10 @@ For full experiment commands see [docs/so101_client-server.md](docs/so101_client
 
 ## TODO
 
-- [ ] Proprioceptive failure detector: stall / collision / drop detection
+- [ ] Proprioceptive failure detector: stall / collision / slip detection
+- [ ] Server-side parallel generation of multi-candidate action chunks with shared/reused observations
+- [ ] Preliminary server-side selection of multi-candidate action chunks using image-space information
+- [ ] RL-based failure-aware recovery to reduce manually designed recovery rules
 
 ---
 
