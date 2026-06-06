@@ -67,19 +67,31 @@ This repository implements an experimental framework for **measuring, assessing,
 ### SO-101
 
 <p align="center">
-<b>SmolVLA Without FAR</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>SmolVLA With FAR (failure recovery)</b>
+<b>SO-101 Evaluation</b>
 </p>
 
 <p align="center">
-<img src="media/readme/no_far_smolvla.webp" width="30%" max-height="350px"/><img src="media/readme/far_smolvla.webp" width="30%" max-height="350px"/>
+<b>Without FAR (Baseline)</b>
 </p>
 
 <p align="center">
-<b>Pi05 Without FAR</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pi05 With FAR (failure recovery)</b>
+<b>SmolVLA</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pi05</b>
 </p>
 
 <p align="center">
-<img src="media/readme/no_far_compare_pi05.webp" width="30%" max-height="200px"/><img src="media/readme/far_compare_pi05.webp" width="30%" max-height="200px"/>
+<img src="media/readme/no_far_smolvla.webp" style="max-height:250px; width:auto"/><img src="media/readme/no_far_compare_pi05.webp" style="max-height:250px; width:auto"/>
+</p>
+
+<p align="center">
+<b>With FAR (Failure-Aware Recovery)</b>
+</p>
+
+<p align="center">
+<b>SmolVLA</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pi05</b>
+</p>
+
+<p align="center">
+<img src="media/readme/far_smolvla.webp" style="max-height:250px; width:auto"/><img src="media/readme/far_compare_pi05.webp" style="max-height:250px; width:auto"/>
 </p>
 
 ---
