@@ -1,16 +1,22 @@
 # Assessment and Failure Recovery in Remote Vision-Language-Action Deployment
 
-<p align="center">
-<b>Pi05 With FAR (failure recovery)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pi05 Without FAR (baseline)</b>
-</p>
-
-<video src="https://raw.githubusercontent.com/HyuanTan/lerobot_far/main/media/readme/far_compare.mp4" autoplay loop muted playsinline style="width:49%;display:inline-block"></video><video src="https://raw.githubusercontent.com/HyuanTan/lerobot_far/main/media/readme/no_far_compare.mp4" autoplay loop muted playsinline style="width:49%;display:inline-block;float:right"></video>
-
 **From Pipeline Measurement to Proprioceptive Retry**
 
-<p align="center"><b>FAR System Demo — Pick-and-Place with Failure Recovery (Smolvla, SO-101)</b></p>
+<p align="center">
+<b>SmolVLA With FAR (failure recovery)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>SmolVLA Without FAR</b>
+</p>
 
-<video src="https://raw.githubusercontent.com/HyuanTan/lerobot_far/main/media/readme/far_test.mp4" autoplay loop muted playsinline style="max-width:100%"></video>
+<p align="center">
+<img src="media/readme/far_smolvla.webp" width="49%"/><img src="media/readme/no_far_smolvla.webp" width="49%"/>
+</p>
+
+<p align="center">
+<b>Pi05 With FAR (failure recovery)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pi05 Without FAR</b>
+</p>
+
+<p align="center">
+<img src="media/readme/far_compare_pi05.webp" width="49%"/><img src="media/readme/no_far_compare_pi05.webp" width="49%"/>
+</p>
 
 ---
 
