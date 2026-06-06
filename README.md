@@ -71,31 +71,20 @@ This repository implements an experimental framework for **measuring, assessing,
 </p>
 
 <p align="center">
-<b>SmolVLA</b>
+<b>SmolVLA: Without FAR</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>With FAR</b>
 </p>
 
 <p align="center">
-<b>Without FAR</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>With FAR (Failure-Aware Recovery)</b>
-</p>
-
-<p align="center">
-<img src="media/readme/no_far_smolvla.webp" style="max-height:350px; width:auto; max-width:45%"/><img src="media/readme/far_smolvla.webp" style="max-height:350px; width:auto; max-width:45%"/>
+<img src="media/readme/no_far_smolvla.webp" style="height:280px; width:auto; margin:0 20px; vertical-align:top"/><img src="media/readme/far_smolvla.webp" style="height:280px; width:auto; margin:0 20px; vertical-align:top"/>
 </p>
 
 
-
-
-
 <p align="center">
-<b>Pi05</b>
+<b>Pi05: Without FAR</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>With FAR</b>
 </p>
 
 <p align="center">
-<b>Without FAR</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>With FAR (Failure-Aware Recovery)</b>
-</p>
-
-<p align="center">
-<img src="media/readme/no_far_compare_pi05.webp" width="45%" style="max-height:350px"/><img src="media/readme/far_compare_pi05.webp" width="45%" style="max-height:350px"/>
+<img src="media/readme/no_far_compare_pi05.webp" style="height:280px; width:auto; margin:0 20px; vertical-align:top"/><img src="media/readme/far_compare_pi05.webp" style="height:280px; width:auto; margin:0 20px; vertical-align:top"/>
 </p>
 
 ---
