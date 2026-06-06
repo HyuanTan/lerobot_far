@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-<img src="media/readme/far_smolvla.webp" width="49%"/><img src="media/readme/no_far_smolvla.webp" width="49%"/>
+<img src="media/readme/far_smolvla.webp" width="30%" max-height="350px"/><img src="media/readme/no_far_smolvla.webp" width="30%" max-height="350px"/>
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-<img src="media/readme/far_compare_pi05.webp" width="49%"/><img src="media/readme/no_far_compare_pi05.webp" width="49%"/>
+<img src="media/readme/far_compare_pi05.webp" width="30%" max-height="200px"/><img src="media/readme/no_far_compare_pi05.webp" width="30%" max-height="200px"/>
 </p>
 
 ---
