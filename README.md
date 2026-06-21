@@ -21,6 +21,8 @@ This repository implements an experimental framework for **measuring, assessing,
 
 **Hardware:** SO-101 follower arm + Jetson Nano 8G (client) + GPU workstation (server, H100)
 
+**Supervised by:** Ze Zhang  
+**In collaboration with:** Yajing Zhang
 
 > **Hardware & Checklist** → [docs/jetson-so101_hardware.md](docs/jetson-so101_hardware.md)  
 > **Data Collection** → [docs/data_collection.md](docs/data_collection.md)  
