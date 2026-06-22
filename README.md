@@ -11,24 +11,30 @@ From Pipeline Measurement to Proprioceptive Retry
 
 This repository implements an experimental framework for **measuring, assessing, and recovering from failures** in remote VLA (Vision-Language-Action) deployment. It is built on top of [LeRobot](https://github.com/huggingface/lerobot) and supports evaluation on both the open-source [SO-101](https://huggingface.co/docs/lerobot/so101) robotic arm and **LIBERO** simulation environments.
 
+
+
 **Key contributions:**
 
-- **Pipeline measurement**: End-to-end latency profiling across the remote async inference pipeline, including observation queueing, inference, network communication, and action dispatch.
-- **LIBERO pipeline evaluation**: Pipeline-level testing and latency analysis in LIBERO simulation before real-robot deployment.
-- **FAR: Failure-Aware Recovery**: A recovery framework that detects failures such as empty grasp and slip using existing proprioceptive and visual feedback, and performs automatic retry or recovery without adding new sensors.
+- **Pipeline evaluation**: Systematic evaluation of the async client-server workflow on both LIBERO simulation and real SO-101 hardware. Breaks down end-to-end latency to show where time is actually spent (observation prep, network transfer, server queue, inference), revealing bottleneck trade-offs between image processing, compression, and Real-Time Chunking.
+- **FAR (Failure-Aware Recovery)**: Lightweight monitor that detects silent execution failures (empty grasp, slip) using only signals already available at runtime — no retraining, no new sensors, no learned models. Automatically triggers recovery and resamples from the recovered state without changing the policy.
 
 **Supported policies:** SmolVLA, Pi0.5
 
 **Hardware:** SO-101 follower arm + Jetson Nano 8G (client) + GPU workstation (server, H100)
-
-**Supervised by:** Ze Zhang  
-**In collaboration with:** Yajing Zhang
 
 > **Hardware & Checklist** → [docs/jetson-so101_hardware.md](docs/jetson-so101_hardware.md)  
 > **Data Collection** → [docs/data_collection.md](docs/data_collection.md)  
 > **Model Training** → [docs/training.md](docs/training.md)  
 > **Client–Server Experiments** → [docs/so101_client-server.md](docs/so101_client-server.md)  
 > **Experiments & Results** → [docs/experiments.md](docs/experiments.md)  
+
+**Thesis**
+
+This work is a master thesis project completed at **Chalmers University of Technology and University of Gothenburg (GU)** in 2026. The thesis was successfully defended on **June 12, 2026**.
+
+- **Thesis Examiner:** Ahmed Ali-Eldin Hassan  
+- **Supervised by:** Ze Zhang  
+- **Authors:** Huoyuan Tan, Yajing Zhang *(equal contribution to project completion)*
 
 ---
 ## Demo

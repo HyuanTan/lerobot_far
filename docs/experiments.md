@@ -21,11 +21,10 @@ Three runtime variants are compared throughout:
 Each variant is additionally evaluated with the **FAR** (Failure-Aware Recovery) monitor enabled (+FAR): monitors gripper feedback and contact signals, interrupts on empty-grasp or slip, resamples from the recovered state.
 
 **Main findings:**
-- FAR raises success rate in simulation across most suites and both policies.
-- On the real robot under perturbation: **+68 pp** for π₀.₅, **+42 pp** for SmolVLA.
-- False-positive regime at high-confidence positions limits benefit under unperturbed RTC (calibration via grasp-confirmation window T).
-- Every success-rate improvement is accompanied by decreased episode length — FAR terminates stalled attempts early.
-- RTC and FAR address disjoint failure modes: RTC absorbs chunk-delivery latency tails; FAR detects contact-layer execution failures.
+- FAR improves success rates across most simulation suites and produces large gains on the real robot under scripted human interference: **+68 pp** for π₀.₅ and **+42 pp** for SmolVLA.
+- FAR is most effective when the failure mode matches its design assumptions, namely empty-grasp and slip failures caused by grasp-confirmation errors.
+- Its benefit is smaller in unperturbed RTC conditions, where false-positive recovery triggers may interrupt otherwise valid attempts in constrained workspaces.
+- RTC and FAR address complementary failure modes: RTC absorbs chunk-delivery latency, whereas FAR detects contact-layer execution failures from gripper feedback and resamples from the recovered state.
 
 ---
 
@@ -101,10 +100,10 @@ N_EPISODES=100 BATCH_SIZE=10
 
 #### Key observations
 
-- FAR reduces episode length whenever it improves SR — confirms early termination of stalled attempts, not just additional overhead.
-- π₀.₅ benefits more consistently than SmolVLA. Largest gains on hard long-horizon suites: RTC+FAR improves Spatial +12 pp and LIBERO-10 +14 pp.
-- **SmolVLA false-positive regime on Object (Baseline condition):** -15 pp SR + 119-step longer episodes — FAR interrupts viable grasps. Adding RTC removes this regression (+10 pp); RTC's chunk-continuity suppresses contact transients that trigger FAR incorrectly.
-- LIBERO-Goal least affected: shortest episodes, lowest grasp-failure prevalence.
+- FAR generally reduces episode length when it improves success rate. Across all suites with positive success-rate change, episode length also decreases, confirming that FAR terminates stalled attempts early and allows resampled chunks to complete tasks in fewer steps rather than waiting until the time limit.
+- The effect is more consistent and larger for π₀.₅. Averaged across four suites, Baseline+FAR increases success rate by +3.5 pp and reduces episode length by 24.7 steps; RTC+FAR increases success rate by +7.8 pp and saves 55.7 steps per episode. The larger RTC gain is driven by harder long-horizon suites: RTC+FAR improves Spatial by +12 pp and LIBERO-10 by +14 pp.
+- SmolVLA shows a false-positive regime on LIBERO-Object under Baseline condition: -15 pp SR with 119-step longer episodes, while Spatial (+11 pp) and Goal (+5 pp) improve. This regression nearly cancels positive contributions; average gain is only +1.0 pp. Adding RTC removes this regression and gives +10 pp on Object, confirming that RTC's chunk-continuity suppresses contact transients that mislead the FAR detector.
+- LIBERO-Goal is the least affected suite, with smallest absolute change in either direction (≤5 pp SR, ≤28 steps), consistent with its shorter episodes and lower grasp-failure prevalence.
 
 ---
 
@@ -152,9 +151,9 @@ uv run python -m lerobot.async_inference.analysis.plot_libero_pipeline \
 ```
 
 **Key observations:**
-- FAR raises SR for Baseline and RTC in most suites for both policies under real pipeline conditions.
-- +FAR variants also reduce average episode length: FAR ends stalled attempts early, drains stale queued actions, issues fresh chunk from recovered state.
-- Intervention rates are moderate under normal pipeline operation; per-attempt retry SR exceeds baseline SR in suites where FAR helps most.
+- Adding FAR improves the success rate for Baseline and RTC in most suites for both policies under real client-server pipeline conditions.
+- The +FAR variants also reduce average episode length in most cases, indicating that FAR often ends stalled attempts early, drains stale queued actions, and requests a fresh chunk from the recovered state, allowing recovered episodes to finish in fewer steps than unrecovered failures that run until the episode limit.
+- Intervention rates remain moderate under normal pipeline operation, consistent with controlled evaluation. In suites where FAR is most helpful, per-attempt retry success rate is higher than corresponding baseline success rate, suggesting that recovery improves the chance of completing the episode rather than simply adding overhead.
 
 ---
 
@@ -189,10 +188,10 @@ uv run python -m lerobot.async_inference.analysis.plot_libero_pipeline \
 
 **Key observations:**
 
-- **No-RTC:** FAR provides consistent gains. SmolVLA +8 pp (24% retry, 80% per-attempt SR), π₀.₅ +10 pp (16% retry). Consistent with controlled simulation findings.
-- **RTC, no interference, π₀.₅:** Net-zero (+0 pp) despite active recoveries (r₁=8, r₂=3). FAR recovers ~11 trials but causes equal false-positive interruptions at high-confidence positions.
-- **With interference:** Large improvements. π₀.₅ RTC: 32%→100% (+68 pp), 94% of trials recovered. SmolVLA RTC: 40%→82% (+42 pp), 85.4% per-attempt SR. Interference creates the exact empty-grasp signature FAR monitors.
-- **No-compression baseline (π₀.₅ RTC†):** 58% vs. 68% compressed — JPEG compression reduces latency enough to benefit RTC chunk timing.
+- **No-RTC:** FAR improves the success rate for both policies. SmolVLA increases from 60% to 68% (+8 pp), while π₀.₅ increases from 72% to 82% (+10 pp). Consistent with simulation results: FAR can recover genuine grasp failures without introducing harmful interruptions in this setting.
+- **RTC without interference:** The effect of FAR is smaller. SmolVLA increases from 64% to 68% (+4 pp). π₀.₅ remains unchanged at 68% (+0 pp), indicating that FAR both rescues failed grasps and occasionally interrupts otherwise viable grasps, with effects cancelling out. Per-position breakdown identifies where this cancellation occurs.
+- **With scripted interference:** FAR produces the largest gains. π₀.₅ RTC rises from 32% to 100% (+68 pp). SmolVLA RTC rises from 40% to 82% (+42 pp). These results show FAR is most effective when the failure mode matches its design target: externally induced empty grasp detectable from gripper feedback and followed by recovery from post-intervention state.
+- **No-compression baseline (π₀.₅ RTC†):** 58% vs. 68% compressed — JPEG compression reduces end-to-end latency enough to improve RTC timing in this deployment configuration.
 
 #### Per-position breakdown — π₀.₅ RTC (n=10 per position)
 
@@ -225,9 +224,9 @@ Under interference: all 5 positions reach 100%. P3 collapses from 90% to 10% wit
 
 - π₀.₅ uses 224×224 inputs (resized + JPEG); small per-observation payload.
 - SmolVLA requires ≥512×512 for its VL encoder; larger payload → more network jitter sensitivity.
-- Server inference is stable; tail dominated by network RTT and queue wait.
-- Fixed RTC horizon H=16 interacts with delay estimate accuracy. When network jitter is high (SmolVLA), the estimated delay lags the true delay and effective horizon drifts out of calibration.
-- **+FAR adds negligible latency overhead** — FAR predicate runs within a single control step on the client.
+- Server inference is stable; tail dominated by network RTT and queue wait. Under RTC, π₀.₅ achieves compact queue-wait distribution (mean ≈43.5 ms, p95=43 ms), while SmolVLA exhibits much heavier tail (mean ≈58.0 ms, p95=413 ms) from payload-related queue saturation.
+- Fixed RTC horizon H=16 interacts with delay estimate accuracy. When network jitter is high (SmolVLA), the estimated delay lags the true delay and effective horizon drifts out of calibration, reducing RTC's smoothing benefit.
+- **FAR does not noticeably change timing behaviour.** Latency distributions with +FAR closely overlap with non-FAR baselines, indicating the recovery check is lightweight and adds no measurable round-trip overhead.
 
 **Generate latency plots:**
 ```bash
@@ -252,7 +251,7 @@ Both π₀.₅ and SmolVLA are flow-matching policies. Two independent sources o
 LIBERO-Spatial: candidate fan widens at the failure point — flow field uncertainty increases when state is unusual (denoising paths diverge).  
 SO-101: candidates from a single request span geometrically distinct approach paths; score spread across them is non-zero.
 
-**Current limitation:** Flow-matching generation carries no explicit awareness of the failed trajectory. Each candidate is an independent draw with no mechanism for avoiding the specific approach geometry that caused failure. A principled selector incorporating contact history, failure signature, or task-progress estimates is future work.
+**Current limitation:** Flow-matching generation is conditioned on the current observation but carries no explicit awareness of the failed trajectory. Each candidate is an independent draw from the learned conditional distribution with no mechanism for avoiding the specific approach geometry that caused failure. When the server returns multiple candidates per request, post-recovery selection can use the failed chunk's geometry as a negative reference — preferring candidates most distant from the failed trajectory reduces replay risk. However, geometric distance is only a heuristic proxy for success likelihood, not a principled criterion. The per-candidate score reflects unconditional generation quality, not task-success probability. A principled selector that incorporates contact history, failure signature, or task-progress estimates remains future work.
 
 **Multi-candidate server:**
 ```bash
@@ -275,9 +274,9 @@ Three signals overlaid for a representative SO-101 episode with FAR-triggered re
 
 **Key observations:**
 
-- **Free-space tracking is reliable.** Executed action and motor feedback follow chunk geometry closely in shoulder/elbow joints. At contact transitions, wrist channels develop 1–2 step phase lag.
-- **Gripper provides a low-noise binary detection anchor.** Step-shaped trace; rising-edge misalignment between commanded close and motor-feedback close = empty-grasp signature. Low false-alarm floor once grasp-confirmation window T is calibrated.
-- **Recovery motion visible as Cartesian back-track.** Short reversals in EE trajectory correspond to lift + rewind motions that return arm to a configuration where the resampled chunk executes without the same geometric obstruction.
+- **Free-space tracking is reliable.** Executed action and motor feedback follow chunk geometry closely in shoulder/elbow joints throughout free-space motion. At contact transitions, wrist channels develop 1–2 step phase lag, with chunks carrying substantial high-frequency content at these moments that the physical system attenuates before reaching joint encoders.
+- **Gripper provides a low-noise binary detection anchor.** Gripper trace is step-shaped; rising-edge misalignment between commanded close and motor-feedback close is the empty-grasp signature. Because the signal is binary and edge is sharp, FAR predicate operates with low false-alarm floor once grasp-confirmation window T is properly calibrated, reading a clean physical signal instead of noisy continuous margin.
+- **Recovery motion visible as Cartesian back-track.** Short reversals in EE trajectory correspond to lift + rewind motions that FAR executes after detected empty-grasp or slip event, returning the arm to configuration where resampled chunk can execute without same geometric obstruction.
 
 **Generate trajectory plots:**
 ```bash
@@ -293,4 +292,4 @@ python src/lerobot/async_inference/analyze_trajectory.py \
   outputs/eval_thesis/so101/<method>/pi05/H16/trajectories
 ```
 
-**Summary:** RTC and FAR address disjoint failure modes and are complementary: RTC operates at chunk-delivery level (absorbs latency tails, reduces velocity discontinuities), FAR operates at execution level (detects contact-layer divergence via gripper signal). Neither subsumes the other; their combination covers the full failure space observed in deployment.
+**Summary:** RTC and FAR act at different levels of the deployment stack. RTC smooths chunk delivery by reducing discontinuities at action-chunk boundaries and partially absorbing queue-induced latency variation. FAR monitors gripper and motor feedback during execution and triggers recovery when the physical outcome diverges from the commanded trajectory. The two mechanisms address complementary failure modes: RTC improves temporal continuity, while FAR handles contact-level execution failures.
