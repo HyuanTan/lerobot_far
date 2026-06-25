@@ -6,6 +6,9 @@ Assessment and Failure Recovery in Remote Vision-Language-Action Deployment
 From Pipeline Measurement to Proprioceptive Retry
 </h2>
 
+<p align="center">
+  <img src="https://visitor-badge.laobi.icu/badge?page_id=HyuanTan.lerobot_far" alt="Repo Views" />
+</p>
 
 ## About
 
